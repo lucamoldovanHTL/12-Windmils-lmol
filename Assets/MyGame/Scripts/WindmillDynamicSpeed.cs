@@ -1,95 +1,44 @@
 using UnityEngine;
 using UnityEngine.UI;
 
-public class WindmillGameManager : MonoBehaviour
+public class WindmillDynamicSpeed : MonoBehaviour
 {
-    [SerializeField] private GameObject[] windmills; 
-    [SerializeField] private Slider[] windmillSliders; 
-    [SerializeField] private Button lockButton; 
-    [SerializeField] private Button applyColorButton; 
-    [SerializeField] private GameObject colorTarget; 
-    private int currentWindmillIndex = 0;
-    private float[] windmillSpeeds = new float[3]; 
-    private bool[] isLocked = new bool[3];
-    private bool allLocked = false;
-    private float maxRotationSpeed = 255f;
-    private float decreaseRate = 100f; 
-
-    private void Start()
-    {
-        lockButton.onClick.AddListener(LockCurrentWindmill);
-        applyColorButton.onClick.AddListener(ApplyColor);
-    }
+    [SerializeField] private Light lampLight; // Assign in Inspector
+    [SerializeField] private float maxLightIntensity = 1f; // Maximum lamp brightness
+    [SerializeField] private Slider speedSlider; // Assign in Inspector
+    [SerializeField] private float maxRotationSpeed = 300f; // Maximum speed
+    [SerializeField] private float acceleration = 50f; // Speed increase per second
+    [SerializeField] private float deceleration = 30f; // Speed decrease per second
+    private float currentSpeed = 0f; // Current rotation speed
 
     private void Update()
     {
-        if (!allLocked && currentWindmillIndex < windmills.Length)
+        // Holding Space increases rotation speed
+        if (Input.GetKey(KeyCode.Space))
         {
-            if (!isLocked[currentWindmillIndex])
-            {
-                if (Input.GetKey(KeyCode.Space))
-                {
-                    IncreaseWindmillValue(Time.deltaTime);
-                }
-                else
-                {
-                    DecreaseWindmillValue(Time.deltaTime);
-                }
-            }
+            currentSpeed += acceleration * Time.deltaTime;
         }
-        RotateWindmills();
-    }
-
-    private void IncreaseWindmillValue(float deltaTime)
-    {
-        float newValue = Mathf.Clamp(windmillSpeeds[currentWindmillIndex] + (deltaTime * 100f), 0, maxRotationSpeed);
-        windmillSpeeds[currentWindmillIndex] = newValue;
-        windmillSliders[currentWindmillIndex].value = newValue;
-    }
-
-    private void DecreaseWindmillValue(float deltaTime)
-    {
-        if (!isLocked[currentWindmillIndex])
+        else
         {
-            float newValue = Mathf.Clamp(windmillSpeeds[currentWindmillIndex] - (deltaTime * decreaseRate), 0, maxRotationSpeed);
-            windmillSpeeds[currentWindmillIndex] = newValue;
-            windmillSliders[currentWindmillIndex].value = newValue;
+            // Slowly reduce speed when Space is not pressed
+            currentSpeed -= deceleration * Time.deltaTime;
         }
-    }
 
-    private void RotateWindmills()
-    {
-        for (int i = 0; i < windmills.Length; i++)
+        // Clamp speed between 0 and maxRotationSpeed
+        currentSpeed = Mathf.Clamp(currentSpeed, 0f, maxRotationSpeed);
+
+        // Rotate the rotor hub
+        transform.Rotate(Vector3.forward * currentSpeed * Time.deltaTime);
+
+        if (speedSlider != null)
         {
-            float speed = windmillSpeeds[i];
-            windmills[i].transform.Rotate(0, 0, speed * Time.deltaTime);
+            speedSlider.value = Mathf.Round(currentSpeed);
         }
-    }
 
-    public void LockCurrentWindmill()
-    {
-        if (currentWindmillIndex < windmills.Length && !isLocked[currentWindmillIndex])
+        // Control light intensity based on speed
+        if (lampLight != null)
         {
-            isLocked[currentWindmillIndex] = true;
-            
-            
-            if (currentWindmillIndex < windmills.Length - 1)
-            {
-                currentWindmillIndex++;
-            }
-            else
-            {
-                allLocked = true;
-            }
-        }
-    }
-
-    public void ApplyColor()
-    {
-        if (allLocked)
-        {
-            Color newColor = new Color(windmillSpeeds[0] / 255f, windmillSpeeds[1] / 255f, windmillSpeeds[2] / 255f);
-            colorTarget.GetComponent<Renderer>().material.color = newColor;
+            lampLight.intensity = Mathf.Lerp(0f, maxLightIntensity, speedSlider.value / 255f);
         }
     }
 }
